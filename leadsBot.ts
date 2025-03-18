@@ -16,7 +16,7 @@ app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
     if (!(platforms || jobTitle || location)) {
       res.status(400).json({ message: "Please provide all the fields" });
     }
-    browser = await puppeteer.launch({ headless: false });
+    browser = await puppeteer.launch();
     console.log("Browser opened");
     const openedPages = await openMultiplePages(
       browser,
@@ -51,6 +51,7 @@ app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+//types
 type Platform = "yellowPages" | "gMaps" | "yelp";
 type RequestBody = {
   platforms: Platform[];
@@ -62,6 +63,7 @@ type GoogleMapsLeads = {
   url: string | undefined;
   phone: string | undefined;
 };
+
 //utlis
 const platformMap: Map<
   Platform,
