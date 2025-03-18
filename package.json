@@ -1,0 +1,23 @@
+{
+  "name": "portfolio-projects",
+  "version": "1.0.0",
+  "main": "alertsBot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "leadsBot": "npx ts-node leadsBot.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^4.21.2",
+    "puppeteer": "^24.4.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "typescript": "^5.8.2"
+  }
+}
