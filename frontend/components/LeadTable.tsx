@@ -53,7 +53,7 @@ const LeadsTable: React.FC<LeadsTableProps> = ({ leads }) => {
               key={`${lead.phone}-${new Date().toLocaleTimeString}`}
               className="hover:bg-gray-50"
             >
-              <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900">
+              <td className="whitespace-nowrap truncate max-w-[300px] px-4 py-4 text-sm font-medium text-gray-900">
                 {lead.name}
               </td>
               <td className="whitespace-nowrap max-w-[200px] truncate px-4 py-4 text-sm text-gray-600">
