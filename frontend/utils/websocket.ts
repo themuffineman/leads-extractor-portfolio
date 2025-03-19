@@ -36,4 +36,18 @@ export class WebSocketService {
   public getSocket(): WebSocket {
     return this.socket;
   }
+  public sendMessage(message: "ping" | "request", data?: string) {
+    if (message === "request") {
+      if (!data) {
+        throw new Error("Data not provided for message type: ping");
+      }
+      WebSocketService.getInstance()
+        .getSocket()
+        .send(JSON.stringify({ message, data }));
+    } else {
+      WebSocketService.getInstance()
+        .getSocket()
+        .send(JSON.stringify({ message }));
+    }
+  }
 }

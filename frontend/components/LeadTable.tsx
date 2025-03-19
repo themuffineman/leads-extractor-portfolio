@@ -2,7 +2,6 @@ import React from "react";
 
 // Simplified Lead interface with only the required properties
 export interface Lead {
-  id: string;
   businessName: string;
   website: string;
   phone: string;
@@ -50,7 +49,7 @@ const LeadsTable: React.FC<LeadsTableProps> = ({ leads }) => {
             </tr>
           ) : null}
           {leads.map((lead) => (
-            <tr key={lead.id} className="hover:bg-gray-50">
+            <tr key={lead.phone} className="hover:bg-gray-50">
               <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900">
                 {lead.businessName}
               </td>

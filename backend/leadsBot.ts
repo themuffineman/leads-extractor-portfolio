@@ -12,12 +12,29 @@ app.listen(port, () => {
 
 const wss = new WebSocketServer({ port: 8080 });
 wss.on("connection", function connection(ws) {
-  ws.on("message", function message(data) {
-    console.log("received: %s", data);
+  ws.on("message", function incoming(message) {
+    console.log("Received message:", message.toString());
+    // Handle the incoming message here
+    try {
+      const parsedMessage = JSON.parse(message.toString());
+      if (parsedMessage.type === "ping") {
+        ws.send(JSON.stringify({ type: "pong", data: "Pong response" }));
+      } else {
+        console.log("Unknown message type:", parsedMessage.type);
+      }
+    } catch (error) {
+      console.log("Error parsing message:", error);
+    }
   });
-
-  ws.send("something");
 });
+
+function broadcastMessage(message: string): void {
+  wss.clients.forEach((client) => {
+    if (client.readyState === client.OPEN) {
+      client.send(message);
+    }
+  });
+}
 
 app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
   let browser: Browser | undefined;
@@ -27,6 +44,12 @@ app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ message: "Please provide all the fields" });
     }
     browser = await puppeteer.launch();
+    broadcastMessage(
+      JSON.stringify({
+        type: "log",
+        data: "Browser opened",
+      })
+    );
     console.log("Browser opened");
     const openedPages = await openMultiplePages(
       browser,
@@ -34,15 +57,33 @@ app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
       jobTitle,
       location
     ); //an attempt to simulate parallelism
+    broadcastMessage(
+      JSON.stringify({
+        type: "log",
+        data: "Initializing Bots",
+      })
+    );
     console.log("Opened multiple pages");
     const finalLeads = [];
     for (const openedPage of openedPages) {
       const { page, platform } = openedPage;
       if (platform === "gMaps") {
         const gMapLeads = await scrapeLeadsGMaps(page);
+        broadcastMessage(
+          JSON.stringify({
+            type: "lead",
+            data: { platform, leads: gMapLeads },
+          })
+        );
         finalLeads.push({ platform, leads: gMapLeads });
       } else if (platform === "yellowPages") {
         const yellowPagesLeads = await scrapeLeadsYellowpages(page);
+        broadcastMessage(
+          JSON.stringify({
+            type: "lead",
+            data: { platform, leads: yellowPagesLeads },
+          })
+        );
         finalLeads.push({ platform, leads: yellowPagesLeads });
       } else if (platform === "yelp") {
         //scrape yelp
@@ -73,7 +114,6 @@ type GoogleMapsLeads = {
   url: string | undefined;
   phone: string | undefined;
 };
-
 //utlis
 const platformMap: Map<
   Platform,

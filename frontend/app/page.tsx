@@ -2,10 +2,9 @@
 import Button from "@/components/Button";
 import LeadsTable from "@/components/LeadTable";
 import { WebSocketService } from "@/utils/websocket";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { toast } from "sonner";
 type Leads = {
-  id: string;
   businessName: string;
   website: string;
   phone: string;
@@ -25,27 +24,84 @@ function downloadCSV(csv: string) {
   a.click();
   window.URL.revokeObjectURL(url);
 }
+type Message = {
+  type: "lead" | "status";
+  data: MessageData | string;
+};
+type MessageData = {
+  platform: "gMaps" | "yellowPages";
+  leads: Leads;
+};
 export default function Home() {
   const [leads, setLeads] = useState<Leads>([]);
   const [location, setLocation] = useState("");
   const [job, setJob] = useState("");
-  async function extractLead() {
+  async function extractLead(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     try {
-      const socket = WebSocketService.getInstance(
-        "ws://localhost:8080"
-      ).subscribeToEvent("message", (data) => {
-        const dataObj = JSON.parse(data);
-        console.log(dataObj);
-        toast("Received Lead", {
-          description: new Date().toLocaleTimeString(),
+      WebSocketService.getInstance("ws://localhost:8080").subscribeToEvent(
+        "message",
+        (data) => {
+          const dataObj: Message = JSON.parse(data);
+          console.log(dataObj);
+          toast(
+            dataObj.type === "status"
+              ? (dataObj.data as string)
+              : `Received Lead from: ${(dataObj.data as MessageData).platform}`,
+            {
+              description: `${new Date().toLocaleTimeString()}`,
+              action: {
+                label: "OK",
+                onClick: () => null,
+              },
+            }
+          );
+          if (dataObj.type === "lead") {
+            setLeads((dataObj.data as MessageData).leads);
+          }
+        }
+      );
+      WebSocketService.getInstance().sendMessage("request");
+      WebSocketService.getInstance().subscribeToEvent("error", () => {
+        console.log("Error setting up websocket connection");
+        toast("Error with connection ❌❌.", {
+          description: `${new Date().toLocaleTimeString()}`,
           action: {
             label: "OK",
             onClick: () => null,
           },
         });
-        setLeads(dataObj);
       });
-    } catch (error) {}
+      WebSocketService.getInstance().subscribeToEvent("close", () => {
+        console.log("websocket connection closed");
+        toast("Connection closed ❌.", {
+          description: `${new Date().toLocaleTimeString()}`,
+          action: {
+            label: "OK",
+            onClick: () => null,
+          },
+        });
+      });
+      WebSocketService.getInstance().subscribeToEvent("open", () => {
+        console.log("websocket connection established");
+        toast("Connection Established ✅✅.", {
+          description: `${new Date().toLocaleTimeString()}`,
+          action: {
+            label: "OK",
+            onClick: () => null,
+          },
+        });
+      });
+    } catch (error: any) {
+      console.error(error.message);
+      toast(`Error: ${error.message}❌`, {
+        description: `${new Date().toLocaleTimeString()}`,
+        action: {
+          label: "OK",
+          onClick: () => null,
+        },
+      });
+    }
   }
 
   return (
@@ -59,7 +115,12 @@ export default function Home() {
         </p>
       </div>
       <div className="w-full max-w-3xl p-4 space-y-4 flex flex-col items-center gap-5">
-        <div className="flex flex-col md:flex-row w-full items-center justify-center gap-5">
+        <form
+          onSubmit={(e) => {
+            extractLead(e);
+          }}
+          className="flex flex-col md:flex-row w-full items-center justify-center gap-5"
+        >
           <div className="flex items-center gap-2">
             <label htmlFor="job">Occupation</label>
             <input
@@ -82,8 +143,8 @@ export default function Home() {
               className="border border-gray-300 rounded-md p-2"
             />
           </div>
-          <Button>Extract Leads</Button>
-        </div>
+          <Button type="submit">Extract Leads</Button>
+        </form>
         <LeadsTable leads={leads} />
         <Button
           disabled={leads.length === 0}
