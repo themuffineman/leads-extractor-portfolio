@@ -54,7 +54,7 @@ export default function Home() {
         await new Promise((res, _) => {
           setTimeout(() => {
             res("Delayed");
-          }, 5000);
+          }, 1500);
         });
         const dataObj: Message = JSON.parse(data);
         toast(
@@ -80,7 +80,6 @@ export default function Home() {
         if (dataObj.type === "lead") {
           setLeads((prevLeads) => {
             if (prevLeads.length > 0) {
-              console.log("old leads", prevLeads);
               const newLeads = [
                 ...prevLeads,
                 (dataObj.data as MessageData).lead,
