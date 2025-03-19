@@ -1,12 +1,22 @@
 import puppeteer, { Browser, Page } from "puppeteer";
 import express from "express";
 import { Request, Response } from "express";
+import { WebSocketServer } from "ws";
 
 const app = express();
 app.use(express.json());
 const port = 8080;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+});
+
+const wss = new WebSocketServer({ port: 8080 });
+wss.on("connection", function connection(ws) {
+  ws.on("message", function message(data) {
+    console.log("received: %s", data);
+  });
+
+  ws.send("something");
 });
 
 app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
