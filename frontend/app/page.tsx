@@ -2,16 +2,17 @@
 import Button from "@/components/Button";
 import LeadsTable from "@/components/LeadTable";
 import { WebSocketService } from "@/utils/websocket";
+import { Loader } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { toast } from "sonner";
 type Leads = {
-  businessName: string;
-  website: string;
+  name: string;
+  url: string;
   phone: string;
 }[];
 function leadsToCSV(leads: Leads) {
   const csv = leads.reduce((acc, lead) => {
-    return `${acc}${lead.businessName},${lead.website},${lead.phone}\n`;
+    return `${acc}${lead.name},${lead.url},${lead.phone}\n`;
   }, "BUSINESS NAME,WEBSITE,PHONE\n");
   downloadCSV(csv);
 }
@@ -30,62 +31,128 @@ type Message = {
 };
 type MessageData = {
   platform: "gMaps" | "yellowPages";
-  leads: Leads;
+  lead: {
+    name: string;
+    url: string;
+    phone: string;
+  };
 };
 export default function Home() {
   const [leads, setLeads] = useState<Leads>([]);
   const [location, setLocation] = useState("");
   const [job, setJob] = useState("");
+  const [isFetching, setIsFetching] = useState<boolean>(false);
   async function extractLead(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    let wsService: null | WebSocketService = null;
     try {
-      WebSocketService.getInstance("ws://localhost:8080").subscribeToEvent(
-        "message",
-        (data) => {
-          const dataObj: Message = JSON.parse(data);
-          console.log(dataObj);
-          toast(
-            dataObj.type === "status"
-              ? (dataObj.data as string)
-              : `Received Lead from: ${(dataObj.data as MessageData).platform}`,
-            {
-              description: `${new Date().toLocaleTimeString()}`,
-              action: {
-                label: "OK",
-                onClick: () => null,
-              },
-            }
-          );
-          if (dataObj.type === "lead") {
-            setLeads((dataObj.data as MessageData).leads);
+      setIsFetching(true);
+      // Ensure WebSocket is fully connected before making any calls
+      wsService = await WebSocketService.getInstance("ws://localhost:8090");
+
+      wsService.subscribeToEvent("message", (data) => {
+        const dataObj: Message = JSON.parse(data);
+        console.log(dataObj);
+        toast(
+          dataObj.type === "status"
+            ? (dataObj.data as string)
+            : `Received Lead from: ${(dataObj.data as MessageData).platform}`,
+          {
+            description: `${new Date().toLocaleString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "2-digit",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}`,
+            action: {
+              label: "OK",
+              onClick: () => null,
+            },
           }
+        );
+        if (dataObj.type === "lead") {
+          setLeads((prevLeads) => {
+            if (prevLeads.length > 0) {
+              console.log("old leads", prevLeads);
+              const newLeads = [
+                ...prevLeads,
+                (dataObj.data as MessageData).lead,
+              ];
+              console.log("New leads are -->", newLeads);
+              return newLeads;
+            } else {
+              console.log("not greater");
+              return [(dataObj.data as MessageData).lead];
+            }
+          });
         }
+      });
+
+      wsService.sendMessage(
+        "request",
+        JSON.stringify({
+          location,
+          job,
+        })
       );
-      WebSocketService.getInstance().sendMessage("request");
-      WebSocketService.getInstance().subscribeToEvent("error", () => {
+
+      wsService.subscribeToEvent("error", () => {
+        setIsFetching(false);
         console.log("Error setting up websocket connection");
+        wsService?.close();
         toast("Error with connection ❌❌.", {
-          description: `${new Date().toLocaleTimeString()}`,
+          description: `${new Date().toLocaleString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "2-digit",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })}`,
           action: {
             label: "OK",
             onClick: () => null,
           },
         });
       });
-      WebSocketService.getInstance().subscribeToEvent("close", () => {
-        console.log("websocket connection closed");
+
+      wsService.subscribeToEvent("close", () => {
+        console.log("WebSocket connection closed");
+        setIsFetching(false);
         toast("Connection closed ❌.", {
-          description: `${new Date().toLocaleTimeString()}`,
+          description: `${new Date().toLocaleString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "2-digit",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })}`,
           action: {
             label: "OK",
             onClick: () => null,
           },
         });
+        wsService?.close();
       });
-      WebSocketService.getInstance().subscribeToEvent("open", () => {
-        console.log("websocket connection established");
+
+      wsService.subscribeToEvent("open", () => {
+        console.log("WebSocket connection established");
         toast("Connection Established ✅✅.", {
-          description: `${new Date().toLocaleTimeString()}`,
+          description: `${new Date().toLocaleString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "2-digit",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })}`,
           action: {
             label: "OK",
             onClick: () => null,
@@ -93,14 +160,24 @@ export default function Home() {
         });
       });
     } catch (error: any) {
+      setIsFetching(false);
       console.error(error.message);
-      toast(`Error: ${error.message}❌`, {
-        description: `${new Date().toLocaleTimeString()}`,
+      toast(`Error with connection. Try again. ❌`, {
+        description: `${new Date().toLocaleString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "2-digit",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })}`,
         action: {
           label: "OK",
           onClick: () => null,
         },
       });
+      wsService?.close();
     }
   }
 
@@ -143,7 +220,15 @@ export default function Home() {
               className="border border-gray-300 rounded-md p-2"
             />
           </div>
-          <Button type="submit">Extract Leads</Button>
+          <Button
+            type="submit"
+            className=" inline-flex items-center gap-2 justify-between w-max"
+          >
+            Extract Leads{" "}
+            {isFetching && (
+              <Loader size={16} className="animate-spin stroke-white" />
+            )}
+          </Button>
         </form>
         <LeadsTable leads={leads} />
         <Button

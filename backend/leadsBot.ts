@@ -3,27 +3,102 @@ import express from "express";
 import { Request, Response } from "express";
 import { WebSocketServer } from "ws";
 
-const app = express();
-app.use(express.json());
-const port = 8080;
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// const app = express();
+// app.use(express.json());
+// const port = 8080;
+// app.listen(port, () => {
+//   console.log(`Server is running on port ${port}`);
+// });
 
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ port: 8090 });
+wss.on("listening", () => {
+  console.log("Websocket up and running");
+});
 wss.on("connection", function connection(ws) {
-  ws.on("message", function incoming(message) {
-    console.log("Received message:", message.toString());
-    // Handle the incoming message here
+  ws.on("message", async function incoming(message) {
+    console.log("Received message:", JSON.parse(message.toString()));
     try {
       const parsedMessage = JSON.parse(message.toString());
-      if (parsedMessage.type === "ping") {
-        ws.send(JSON.stringify({ type: "pong", data: "Pong response" }));
+      if (parsedMessage.type === "request") {
+        let browser: Browser | undefined;
+        try {
+          const { job, location }: RequestBody = JSON.parse(parsedMessage.data);
+          if (!(job || !location)) {
+            broadcastMessage(
+              JSON.stringify({
+                data: "Please provide all the fields",
+                type: "status",
+              })
+            );
+          }
+          browser = await puppeteer.launch({ headless: false });
+          broadcastMessage(
+            JSON.stringify({
+              type: "status",
+              data: "Browser opened",
+            })
+          );
+          console.log("Browser opened");
+          const openedPages = await openMultiplePages(
+            browser,
+            ["gMaps"],
+            job,
+            location
+          ); //an attempt to simulate parallelism
+          broadcastMessage(
+            JSON.stringify({
+              type: "status",
+              data: "Initializing Bot",
+            })
+          );
+          console.log("Opened multiple pages");
+          const finalLeads = [];
+          for (const openedPage of openedPages) {
+            const { page, platform } = openedPage;
+            if (platform === "gMaps") {
+              const gMapLeads = await scrapeLeadsGMaps(page);
+              finalLeads.push({ platform, leads: gMapLeads });
+            } else if (platform === "yellowPages") {
+              const yellowPagesLeads = await scrapeLeadsYellowpages(page);
+              finalLeads.push({ platform, leads: yellowPagesLeads });
+            } else if (platform === "yelp") {
+              //scrape yelp
+            }
+            broadcastMessage(
+              JSON.stringify({
+                type: "status",
+                data: "Lead extraction complete✅✅",
+              })
+            );
+            console.log("Scraping complete");
+          }
+        } catch (error: any) {
+          console.log(error);
+          await browser?.close();
+          broadcastMessage(
+            JSON.stringify({
+              data: `Internal server error ${error.message}`,
+              type: "status",
+            })
+          );
+        } finally {
+          await browser?.close();
+          wss.on("close", () => {
+            console.log("WebSocket server has been closed.");
+          });
+        }
       } else {
-        console.log("Unknown message type:", parsedMessage.type);
+        broadcastMessage(
+          JSON.stringify({
+            type: "status",
+            data: `Unknown message type: ${parsedMessage.type}`,
+          })
+        );
       }
     } catch (error) {
       console.log("Error parsing message:", error);
+    } finally {
+      wss.close();
     }
   });
 });
@@ -36,77 +111,76 @@ function broadcastMessage(message: string): void {
   });
 }
 
-app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
-  let browser: Browser | undefined;
-  try {
-    const { platforms, jobTitle, location }: RequestBody = req.body;
-    if (!(platforms || jobTitle || location)) {
-      res.status(400).json({ message: "Please provide all the fields" });
-    }
-    browser = await puppeteer.launch();
-    broadcastMessage(
-      JSON.stringify({
-        type: "log",
-        data: "Browser opened",
-      })
-    );
-    console.log("Browser opened");
-    const openedPages = await openMultiplePages(
-      browser,
-      platforms,
-      jobTitle,
-      location
-    ); //an attempt to simulate parallelism
-    broadcastMessage(
-      JSON.stringify({
-        type: "log",
-        data: "Initializing Bots",
-      })
-    );
-    console.log("Opened multiple pages");
-    const finalLeads = [];
-    for (const openedPage of openedPages) {
-      const { page, platform } = openedPage;
-      if (platform === "gMaps") {
-        const gMapLeads = await scrapeLeadsGMaps(page);
-        broadcastMessage(
-          JSON.stringify({
-            type: "lead",
-            data: { platform, leads: gMapLeads },
-          })
-        );
-        finalLeads.push({ platform, leads: gMapLeads });
-      } else if (platform === "yellowPages") {
-        const yellowPagesLeads = await scrapeLeadsYellowpages(page);
-        broadcastMessage(
-          JSON.stringify({
-            type: "lead",
-            data: { platform, leads: yellowPagesLeads },
-          })
-        );
-        finalLeads.push({ platform, leads: yellowPagesLeads });
-      } else if (platform === "yelp") {
-        //scrape yelp
-      }
-    }
-    await browser.close();
-    res.status(200).json({ leads: finalLeads });
-    return;
-  } catch (error: any) {
-    console.log(error);
-    await browser?.close();
-    res
-      .status(500)
-      .json({ status: "Internal server error", message: error.message });
-    return;
-  }
-});
+// app.post("/get-leads", async (req: Request, res: Response): Promise<void> => {
+//   let browser: Browser | undefined;
+//   try {
+//     const { job, location }: RequestBody = req.body;
+//     if (!(job || location)) {
+//       res.status(400).json({ message: "Please provide all the fields" });
+//     }
+//     browser = await puppeteer.launch();
+//     broadcastMessage(
+//       JSON.stringify({
+//         type: "log",
+//         data: "Browser opened",
+//       })
+//     );
+//     console.log("Browser opened");
+//     const openedPages = await openMultiplePages(
+//       browser,
+//       ["gMaps", "yellowPages"],
+//       job,
+//       location
+//     ); //an attempt to simulate parallelism
+//     broadcastMessage(
+//       JSON.stringify({
+//         type: "log",
+//         data: "Initializing Bots",
+//       })
+//     );
+//     console.log("Opened multiple pages");
+//     const finalLeads = [];
+//     for (const openedPage of openedPages) {
+//       const { page, platform } = openedPage;
+//       if (platform === "gMaps") {
+//         const gMapLeads = await scrapeLeadsGMaps(page);
+//         broadcastMessage(
+//           JSON.stringify({
+//             type: "lead",
+//             data: { platform, leads: gMapLeads },
+//           })
+//         );
+//         finalLeads.push({ platform, leads: gMapLeads });
+//       } else if (platform === "yellowPages") {
+//         const yellowPagesLeads = await scrapeLeadsYellowpages(page);
+//         broadcastMessage(
+//           JSON.stringify({
+//             type: "lead",
+//             data: { platform, leads: yellowPagesLeads },
+//           })
+//         );
+//         finalLeads.push({ platform, leads: yellowPagesLeads });
+//       } else if (platform === "yelp") {
+//         //scrape yelp
+//       }
+//     }
+//     await browser.close();
+//     res.status(200).json({ leads: finalLeads });
+//     return;
+//   } catch (error: any) {
+//     console.log(error);
+//     await browser?.close();
+//     res
+//       .status(500)
+//       .json({ status: "Internal server error", message: error.message });
+//     return;
+//   }
+// });
 
 //types
 type Platform = "yellowPages" | "gMaps" | "yelp";
 type RequestBody = {
-  platforms: Platform[];
-  jobTitle: string;
+  job: string;
   location: string;
 };
 type GoogleMapsLeads = {
@@ -177,6 +251,12 @@ async function scrapeLeadsGMaps(page: Page): Promise<GoogleMapsLeads[]> {
           undefined,
         phoneSelector
       );
+      broadcastMessage(
+        JSON.stringify({
+          type: "lead",
+          data: { platform: "Google Maps", lead: { name, url, phone } },
+        })
+      );
       gMapleads.push({ name, url, phone });
     }
     return gMapleads;
@@ -229,7 +309,7 @@ async function scrapeLeadsYellowpages(page: Page) {
   }
 }
 function gMapsUrl(jobTitle: string, location: string) {
-  return `https://www.google.com/maps/search/${jobTitle}+${location}`;
+  return `https://www.google.com/maps/search/${jobTitle}+in+${location}`;
 }
 function yelpUrl(jobTitle: string, location: string) {
   return `https://www.yelp.com/search?find_desc=${jobTitle}&find_loc=${location}`;
