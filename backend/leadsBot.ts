@@ -66,7 +66,7 @@ wss.on("connection", function connection(ws) {
             }
             broadcastMessage(
               JSON.stringify({
-                type: "status",
+                type: "complete",
                 data: "Lead extraction complete✅✅",
               })
             );

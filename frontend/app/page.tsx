@@ -26,7 +26,7 @@ function downloadCSV(csv: string) {
   window.URL.revokeObjectURL(url);
 }
 type Message = {
-  type: "lead" | "status";
+  type: "lead" | "status" | "complete";
   data: MessageData | string;
 };
 type MessageData = {
@@ -50,11 +50,15 @@ export default function Home() {
       // Ensure WebSocket is fully connected before making any calls
       wsService = await WebSocketService.getInstance("ws://localhost:8090");
 
-      wsService.subscribeToEvent("message", (data) => {
+      wsService.subscribeToEvent("message", async (data) => {
+        await new Promise((res, _) => {
+          setTimeout(() => {
+            res("Delayed");
+          }, 5000);
+        });
         const dataObj: Message = JSON.parse(data);
-        console.log(dataObj);
         toast(
-          dataObj.type === "status"
+          dataObj.type === "status" || dataObj.type === "complete"
             ? (dataObj.data as string)
             : `Received Lead from: ${(dataObj.data as MessageData).platform}`,
           {
@@ -81,13 +85,14 @@ export default function Home() {
                 ...prevLeads,
                 (dataObj.data as MessageData).lead,
               ];
-              console.log("New leads are -->", newLeads);
               return newLeads;
             } else {
-              console.log("not greater");
               return [(dataObj.data as MessageData).lead];
             }
           });
+        }
+        if (dataObj.type === "complete") {
+          wsService?.close();
         }
       });
 

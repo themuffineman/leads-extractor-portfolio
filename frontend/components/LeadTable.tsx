@@ -49,12 +49,21 @@ const LeadsTable: React.FC<LeadsTableProps> = ({ leads }) => {
             </tr>
           ) : null}
           {leads.map((lead) => (
-            <tr key={lead.phone} className="hover:bg-gray-50">
+            <tr
+              key={`${lead.phone}-${new Date().toLocaleTimeString}`}
+              className="hover:bg-gray-50"
+            >
               <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900">
                 {lead.name}
               </td>
-              <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-600">
-                {lead.url}
+              <td className="whitespace-nowrap max-w-[200px] truncate px-4 py-4 text-sm text-gray-600">
+                <a
+                  className="hover:underline hover:text-blue-400"
+                  target="_blank"
+                  href={lead.url}
+                >
+                  {lead.url}
+                </a>
               </td>
               <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-600">
                 {lead.phone}
