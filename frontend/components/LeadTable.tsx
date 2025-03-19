@@ -15,7 +15,7 @@ interface LeadsTableProps {
 const LeadsTable: React.FC<LeadsTableProps> = ({ leads }) => {
   return (
     <div className="rounded-md w-full border border-neutral-200 ">
-      <table className="min-w-full divide-y divide-gray-200">
+      <table className="min-w-full divide-y rounded-md divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
             <th

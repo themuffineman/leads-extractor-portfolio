@@ -1,69 +1,9 @@
 "use client";
 import Button from "@/components/Button";
 import LeadsTable from "@/components/LeadTable";
+import { WebSocketService } from "@/utils/websocket";
 import { useState } from "react";
-const mockLeads = [
-  {
-    id: "1",
-    businessName: "Acme Corporation",
-    website: "acmecorp.com",
-    phone: "(555) 123-4567",
-  },
-  {
-    id: "2",
-    businessName: "TechVision Inc.",
-    website: "techvision.io",
-    phone: "(555) 234-5678",
-  },
-  {
-    id: "3",
-    businessName: "Global Enterprises",
-    website: "globalent.com",
-    phone: "(555) 345-6789",
-  },
-  {
-    id: "4",
-    businessName: "InnovateTech Solutions",
-    website: "innovatetech.co",
-    phone: "(555) 456-7890",
-  },
-  {
-    id: "5",
-    businessName: "Sunrise Retail Group",
-    website: "sunriseretail.net",
-    phone: "(555) 567-8901",
-  },
-  {
-    id: "6",
-    businessName: "FutureTech Systems",
-    website: "futuretech.co",
-    phone: "(555) 678-9012",
-  },
-  {
-    id: "7",
-    businessName: "Evergreen Solutions",
-    website: "evergreensol.com",
-    phone: "(555) 789-0123",
-  },
-  {
-    id: "8",
-    businessName: "Pacific Dynamics",
-    website: "pacificdyn.org",
-    phone: "(555) 890-1234",
-  },
-  {
-    id: "9",
-    businessName: "NexGen Media",
-    website: "nexgenmedia.com",
-    phone: "(555) 901-2345",
-  },
-  {
-    id: "10",
-    businessName: "Urban Outfitters",
-    website: "urbanoutfitters.com",
-    phone: "(555) 012-3456",
-  },
-];
+import { toast } from "sonner";
 type Leads = {
   id: string;
   businessName: string;
@@ -89,6 +29,25 @@ export default function Home() {
   const [leads, setLeads] = useState<Leads>([]);
   const [location, setLocation] = useState("");
   const [job, setJob] = useState("");
+  async function extractLead() {
+    try {
+      const socket = WebSocketService.getInstance(
+        "ws://localhost:8080"
+      ).subscribeToEvent("message", (data) => {
+        const dataObj = JSON.parse(data);
+        console.log(dataObj);
+        toast("Received Lead", {
+          description: new Date().toLocaleTimeString(),
+          action: {
+            label: "OK",
+            onClick: () => null,
+          },
+        });
+        setLeads(dataObj);
+      });
+    } catch (error) {}
+  }
+
   return (
     <main className="flex flex-col w-full min-h-screen pt-20 items-center justify-center font-[family-name:var(--font-dm-sans)] ">
       <div className="flex flex-col items-center justify-center">
@@ -125,11 +84,11 @@ export default function Home() {
           </div>
           <Button>Extract Leads</Button>
         </div>
-        <LeadsTable leads={mockLeads} />
+        <LeadsTable leads={leads} />
         <Button
-          disabled={mockLeads.length === 0}
+          disabled={leads.length === 0}
           onClick={() => {
-            leadsToCSV(mockLeads);
+            leadsToCSV(leads);
           }}
         >
           Export to CSV
