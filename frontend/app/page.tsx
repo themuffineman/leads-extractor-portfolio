@@ -48,7 +48,9 @@ export default function Home() {
     try {
       setIsFetching(true);
       // Ensure WebSocket is fully connected before making any calls
-      wsService = await WebSocketService.getInstance("ws://localhost:8090");
+      wsService = await WebSocketService.getInstance(
+        process.env.NEXT_PUBLIC_BACKEND_URL
+      );
 
       wsService.subscribeToEvent("message", async (data) => {
         await new Promise((res, _) => {
@@ -191,9 +193,7 @@ export default function Home() {
         <h1 className="text-5xl font-bold text-black tracking-tighter ">
           Lead Extractor 9000
         </h1>
-        <p className="text-lg text-gray-500">
-          Extract leads from google maps and yellow pages
-        </p>
+        <p className="text-lg text-gray-500">Extract leads from google maps</p>
       </div>
       <div className="w-full max-w-3xl p-4 space-y-4 flex flex-col items-center gap-5">
         <form
