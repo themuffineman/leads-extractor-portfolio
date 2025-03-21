@@ -3,12 +3,12 @@ import express from "express";
 import { Request, Response } from "express";
 import { WebSocketServer } from "ws";
 
-// const app = express();
-// app.use(express.json());
-// const port = 8080;
-// app.listen(port, () => {
-//   console.log(`Server is running on port ${port}`);
-// });
+const app = express();
+app.use(express.json());
+const port = 8080;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
 
 const wss = new WebSocketServer({ port: 8090 });
 wss.on("listening", () => {
