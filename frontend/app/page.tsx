@@ -49,7 +49,7 @@ export default function Home() {
       setIsFetching(true);
       // Ensure WebSocket is fully connected before making any calls
       wsService = await WebSocketService.getInstance(
-        process.env.NEXT_PUBLIC_BACKEND_URL
+        `wss://leads-extractor-portfolio-production.up.railway.app`
       );
 
       wsService.subscribeToEvent("message", async (data) => {
