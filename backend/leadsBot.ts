@@ -31,7 +31,10 @@ wss.on("connection", function connection(ws) {
               })
             );
           }
-          browser = await puppeteer.launch({ headless: false });
+          browser = await puppeteer.launch({
+            headless: false,
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          });
           broadcastMessage(
             JSON.stringify({
               type: "status",
